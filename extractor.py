@@ -67,6 +67,7 @@ class MarvelExtractor:
             ]
         )
         
+        
     def get_params(self):
         """Get a dictionary with the parameters required by the API.
         
@@ -90,65 +91,7 @@ class MarvelExtractor:
             'limit': 100,
             'offset': 0
         }
-        return params
-        
-    def get_comics(self, limit=0):
-        """Get a list of all the Marvel comics. The result is a list of comic's attributes. 
-        More details https://developer.marvel.com/docs#!/public/getCreatorCollection_get_0 
-        
-        The number of records retrieved by call is set to 100 (max records allowed by the API).
-        
-        Attributes:
-            limit: total number of records to retrieve. All the records are retrieved by default.
-        
-        """
-        
-        api_url = "http://gateway.marvel.com/v1/public/comics"
-        params = self.get_params()     
-                
-        final = []      # the final list to return
-        nrecords = 0    # record count
-        offset = 100    # max offset allowed by the API
-            
-        while True: 
-            time.sleep(2) # wait before each request
-            logging.info(f"Collecting records {nrecords}-{nrecords+offset}...")
-            response = requests.get(api_url, params=params) 
-                    
-            if response.status_code == 200: 
-                data = response.json() 
-                
-                if data["code"] == 200: # correct response
-                    header = data["data"]
-                    total = header["total"]
-                    
-                    limit = total if limit == 0 else limit
-                    
-                    if nrecords == 0: # first iteration
-                        logging.info(f"Total available records: {total}. Retrieving {limit}.")            
-                    
-                    final.extend(header['results'])  # 'data' contains the batch of results 
-                    
-                    nrecords += offset
-                    
-                    logging.info(f"... sucessfully collected {nrecords} out of {total} records.")
-                
-                    # Check if there are more results to fetch
-                    if nrecords >= limit:
-                        break
-                    else: # nrecords < total: 
-                        params['offset'] = nrecords  # Update the offset parameter 
-                
-                else:
-                    logging.error(f"API Error: {data.code}") 
-                    time.sleep(2)   # Simple backoff on error 
-                    continue        # Retry the same request 
-            else: 
-                logging.error(f"Error during request: {response.status_code}, {response.text}") 
-                time.sleep(2)  # Simple backoff on error 
-                continue       # Retry the same request 
-        
-        return final 
+        return params 
             
             
     def save_to_file(self, data, filename):
@@ -167,19 +110,14 @@ class MarvelExtractor:
             
         logging.info('Done.')
             
+    
+    def get_records(self, api_url, limit=0):
+        """A generic method to retrieve records from the api
 
-    def get_characters(self, limit=0): 
-        """Get a list of all the Marvel characters. The list contains dictionaries with characters' attributes. 
-        See https://developer.marvel.com/docs#!/public/getCreatorCollection_get_0 
-        
-        The number of records retrieved by call is set to 100 (max records allowed by the API).
-        
-        Attributes:
-            limit: max number of records to retrieve. All the records are retrieved by default.
+        Args:
+            api_url (str): _description_
+            limit (int, optional): total number of records to retrieve. Defaults to 0 (all available records are extracted).
         """
-        
-        api_url = "http://gateway.marvel.com/v1/public/characters" 
-        
         params = self.get_params()
             
         final = []      # the final list to return
@@ -223,17 +161,47 @@ class MarvelExtractor:
             else: 
                 logging.error(f"Error during request: {response.status_code}, {response.text}") 
                 time.sleep(2)  # Simple backoff on error 
-                continue       # Retry the same request 
+                continue       # Retry the same request
+            
+        return final
+            
+
+    def get_characters(self, limit=0): 
+        """Get a list of all the Marvel characters. The list contains dictionaries with characters' attributes. 
+        See https://developer.marvel.com/docs#!/public/getCreatorCollection_get_0 
         
+        The number of records retrieved by call is set to 100 (max records allowed by the API).
+        
+        Attributes:
+            limit: max number of records to retrieve. All the records are retrieved by default.
+        """
+        
+        api_url = "http://gateway.marvel.com/v1/public/characters" 
+        final = self.get_records(api_url, limit)
         return final 
     
     
-    def preprocess_characters(self, data_input, filename, file_input=None):
+    def preprocess_characters(self, output_filename, data_input=None, file_input=None):
+        """Preprocess a list of Marvel characters. 
+        As a result, a csv file is created with the following attributes:
+        * id: unique id of the character
+        * name: name of the character
+        * img: url pointing to the thumbnail of the character
+        * comics: number of comics the character appears in
         
+        Attributes:
+            output_filename: filename where the output will be saved
+            data_input: an in-memory list of dictionaries containing characters data downloaded with `get_characters`
+            file_input: a json file containing characters data
+        """        
         logging.info('Loading data...')
         
-        if file_input is None:
-            pd.DataFrame(data=data_input)
+        df = pd.DataFrame()
+        if (file_input is None) and (data_input is None):
+            logging.error('You must provide data either in file format or dictorionary.')
+            return 
+        elif data_input:
+            df = pd.DataFrame(data=data_input)
         else:
             df = pd.read_json("data/characters.json")
         
@@ -245,9 +213,38 @@ class MarvelExtractor:
         
         logging.info('Saving preprocessed data to csv...')
         
-        df[["id", "name", "img", "comics"]].to_csv(filename, index=False)
+        df[["id", "name", "img", "comics"]].to_csv(output_filename, index=False)
         
         logging.info('Done.')
+        
+        
+    def get_character_comics(self, character_id, limit=0):
+        """Gets all the comics in which a given character appears in
+
+        Args:
+            character_id (int): the id of the character
+            limit (int, optional): total number of records to retrieve. Defaults to 0 (all available records are extracted).
+        """
+        
+        api_url = f"http://gateway.marvel.com/v1/public/characters/{character_id}/comics" 
+        final = self.get_records(api_url, limit)
+        return final
+
+        
+    def get_comics(self, limit=0):
+        """Gets a list of all the available Marvel comics. The result is a list of dictionaries with comic's attributes. 
+        More details https://developer.marvel.com/docs#!/public/getCreatorCollection_get_0 
+        
+        The number of records retrieved by call is set to 100 (max records allowed by the API).
+        
+        Attributes:
+            limit: total number of records to retrieve. All the records are retrieved by default.
+        
+        """
+        
+        api_url = "http://gateway.marvel.com/v1/public/comics"
+        final = self.get_records(api_url, limit)
+        return final
         
 
 if __name__ == '__main__':
@@ -259,29 +256,31 @@ if __name__ == '__main__':
     mv = MarvelExtractor(public_key, private_key)
     
     ###
-    # get comics and save to file
-    # data = mv.get_comics(limit=200)
-    # mv.save_to_file(data, "data/comics.json")
-    
+    ### get characters
     ###
-    # get characters
-    data = mv.get_characters(limit=300)
+    # data = mv.get_characters()
     # mv.save_to_file(data, "data/characters.json")
-    mv.preprocess_characters(data, "data/new_ch.csv")
+    # mv.preprocess_characters(data_input=data, output_filename="data/characters.csv")
     
     # with open('data/characters.json') as f:
     #     data = json.load(f)
-        
     #     mv.preprocess_characters(data)
-
-    #df = pd.read_json("data/characters.json")
     
+    ###
+    ### get the number of comics in which a character appears in
+    ###
+    # data = mv.get_character_comics(1009146)
+    # df = pd.DataFrame(data=data)
+    # print(df["id"].nunique())
+
+    ###
+    ### get all the comics and save them to a file
+    ###
+    data = mv.get_comics(limit=2000)
+    mv.save_to_file(data, "data/comics_sample.json")
+    
+    # df = pd.read_json("data/characters.json")
     # print("Unique IDs:" , df["id"].nunique())
     # print("Beasts: ", df[df['name'] == "Beast"]["id"].nunique() )
     
-    
-        
-    #available_comics = beast["comics"]
-    
-    #print(available_comics["available"])
     

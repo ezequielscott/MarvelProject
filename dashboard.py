@@ -1,7 +1,10 @@
 from dash import Dash, dash_table, html
 import pandas as pd
 
-df = pd.read_csv('data/characters.csv')
+filename = "data/characters.csv"
+
+with open(filename) as f:
+    df = pd.read_csv(f)
 
 # Thumbnail following markdown format: [![alt text](image link)](web link)
 df["thumbnail"] = df.apply( lambda x : '[<img src="' + x['img'] + '" width="100" />](' + x['img'] + ')', axis=1)
@@ -18,7 +21,7 @@ app.layout =  html.Div(
             columns=[
                 {"id": "id", "name": "ID"},
                 {"id": "name", "name": "Name"},
-                #{"id": "thumbnail", "name": "Image", "presentation": "markdown"},
+                {"id": "thumbnail", "name": "Image", "presentation": "markdown"},
                 {"id": "comics", "name": "Comics"},
             ],
             markdown_options={"html": True},            
