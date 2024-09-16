@@ -258,9 +258,9 @@ if __name__ == '__main__':
     ###
     ### get characters
     ###
-    # data = mv.get_characters()
-    # mv.save_to_file(data, "data/characters.json")
-    # mv.preprocess_characters(data_input=data, output_filename="data/characters.csv")
+    data = mv.get_characters()
+    mv.save_to_file(data, "data/characters.json")
+    mv.preprocess_characters(data_input=data, output_filename="data/characters.csv")
     
     # with open('data/characters.json') as f:
     #     data = json.load(f)
@@ -274,13 +274,10 @@ if __name__ == '__main__':
     # print(df["id"].nunique())
 
     ###
-    ### get all the comics and save them to a file
+    ### get comics and save them to a file
     ###
-    data = mv.get_comics(limit=2000)
-    mv.save_to_file(data, "data/comics_sample.json")
+    # data = mv.get_comics(limit=2000)
+    # mv.save_to_file(data, "data/comics_sample.json")
     
-    # df = pd.read_json("data/characters.json")
-    # print("Unique IDs:" , df["id"].nunique())
-    # print("Beasts: ", df[df['name'] == "Beast"]["id"].nunique() )
     
     
