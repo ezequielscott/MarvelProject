@@ -48,6 +48,13 @@ import logging
 class MarvelExtractor:
     
     def __init__(self, api_public_key, api_private_key):
+        """Class constructor
+
+        Attributes:
+            api_public_key: A string with the public key 
+            api_private_key: A string with the private key
+        """
+        
         self.api_public_key = api_public_key
         self.api_private_key = api_private_key
         
@@ -61,9 +68,15 @@ class MarvelExtractor:
         )
         
     def get_params(self):
+        """Get a dictionary with the parameters required by the API.
         
-        # ts - a timestamp (or other long string which can change on a request-by-request basis)
-        # hash - a md5 digest of the ts parameter, your private key and your public key (e.g. md5(ts+privateKey+publicKey)
+        The dictionary includes:
+            ts: current timestamp
+            apikey: public api key
+            hash: a md5 digest made of ts+public_key+private_key
+            limit: max number of records to retrieve
+            offset: the initial offset is set to 0
+        """
     
         ts = time.time()
         hash_md5 = hashlib.md5()
@@ -79,34 +92,100 @@ class MarvelExtractor:
         }
         return params
         
-    def get_comics(self):
+    def get_comics(self, limit=0):
+        """Get a list of all the Marvel comics. The result is a list of comic's attributes. 
+        More details https://developer.marvel.com/docs#!/public/getCreatorCollection_get_0 
+        
+        The number of records retrieved by call is set to 100 (max records allowed by the API).
+        
+        Attributes:
+            limit: total number of records to retrieve. All the records are retrieved by default.
+        
+        """
         
         api_url = "http://gateway.marvel.com/v1/public/comics"
-        params = self.get_params()
+        params = self.get_params()     
                 
-        response = requests.get(api_url, params=params) 
-        
-        if response.status_code == 200: 
-            data = response.json()
-                            
-            header = data["data"]
-            total = header["total"]
+        final = []      # the final list to return
+        nrecords = 0    # record count
+        offset = 100    # max offset allowed by the API
+            
+        while True: 
+            time.sleep(2) # wait before each request
+            logging.info(f"Collecting records {nrecords}-{nrecords+offset}...")
+            response = requests.get(api_url, params=params) 
                     
-            logging.info(f"Total available records: {total} ")  
+            if response.status_code == 200: 
+                data = response.json() 
+                
+                if data["code"] == 200: # correct response
+                    header = data["data"]
+                    total = header["total"]
+                    
+                    limit = total if limit == 0 else limit
+                    
+                    if nrecords == 0: # first iteration
+                        logging.info(f"Total available records: {total}. Retrieving {limit}.")            
+                    
+                    final.extend(header['results'])  # 'data' contains the batch of results 
+                    
+                    nrecords += offset
+                    
+                    logging.info(f"... sucessfully collected {nrecords} out of {total} records.")
+                
+                    # Check if there are more results to fetch
+                    if nrecords >= limit:
+                        break
+                    else: # nrecords < total: 
+                        params['offset'] = nrecords  # Update the offset parameter 
+                
+                else:
+                    logging.error(f"API Error: {data.code}") 
+                    time.sleep(2)   # Simple backoff on error 
+                    continue        # Retry the same request 
+            else: 
+                logging.error(f"Error during request: {response.status_code}, {response.text}") 
+                time.sleep(2)  # Simple backoff on error 
+                continue       # Retry the same request 
+        
+        return final 
+            
+            
+    def save_to_file(self, data, filename):
+        """Save a list of dictionaries as a JSON file.
+        
+        This method is usually used after using `get_characters`.
+        
+        Attributes:
+            filename: the filepath where the data is saved.
+        """
+        
+        logging.info('Saving data to file...')
+        
+        with open(filename, 'w') as f: 
+            json.dump(data, f)
+            
+        logging.info('Done.')
             
 
-    def get_characters(self, api_url, params=None): 
+    def get_characters(self, limit=0): 
+        """Get a list of all the Marvel characters. The list contains dictionaries with characters' attributes. 
+        See https://developer.marvel.com/docs#!/public/getCreatorCollection_get_0 
+        
+        The number of records retrieved by call is set to 100 (max records allowed by the API).
+        
+        Attributes:
+            limit: max number of records to retrieve. All the records are retrieved by default.
+        """
         
         api_url = "http://gateway.marvel.com/v1/public/characters" 
         
-        if params is None: 
-            params = {}
+        params = self.get_params()
             
-        final = [] 
-        nrecords = 0
-        offset = 100
+        final = []      # the final list to return
+        nrecords = 0    # record count
+        offset = 100    # max offset allowed by the API
             
-        #final = pd.DataFrame()
         while True: 
             time.sleep(2) # wait before each request
             logging.info(f"Collecting records {nrecords}-{nrecords+offset}...")
@@ -120,76 +199,87 @@ class MarvelExtractor:
                     header = data["data"]
                     total = header["total"]
                     
+                    limit = total if limit == 0 else limit
+                    
                     if nrecords == 0: # first iteration
                         logging.info(f"Total available records: {total} ")            
                     
                     final.extend(header['results'])  # 'data' contains the batch of results 
                     
                     nrecords += offset
+                    
+                    logging.info(f"... sucessfully collected {nrecords} out of {total} records.")
                 
                     # Check if there are more results to fetch
-                    if nrecords < total: 
+                    if nrecords >= limit:
+                        break
+                    else: # nrecords < total: 
                         params['offset'] = nrecords  # Update the offset parameter 
-                    else: 
-                        break  # No more pages 
-                                    
-                    logging.info(f"... sucessfully collected {nrecords} out of {total} records.")
-                    
-                    # if nrecords == 300:
-                    #     break 
+                                
+                else:
+                    logging.error(f"API Error: {data.code}") 
+                    time.sleep(2)   # Simple backoff on error 
+                    continue        # Retry the same request 
             else: 
-                logging.error(f"Error: {response.status_code}, {response.text}") 
+                logging.error(f"Error during request: {response.status_code}, {response.text}") 
                 time.sleep(2)  # Simple backoff on error 
-                continue  # Retry the same request 
-            
-            #break # only 1 iterartion
+                continue       # Retry the same request 
         
         return final 
     
-# Example usage 
-#data = fetch_data(api_url) 
+    
+    def preprocess_characters(self, data_input, filename, file_input=None):
+        
+        logging.info('Loading data...')
+        
+        if file_input is None:
+            pd.DataFrame(data=data_input)
+        else:
+            df = pd.read_json("data/characters.json")
+        
+        logging.info('Preprocessing...')
+        
+        df["img"] = df.apply(lambda x : x['thumbnail']["path"] + "." + x['thumbnail']["extension"], axis=1)
+        
+        df["comics"] = df.apply(lambda x : x['comics']["available"], axis=1) 
+        
+        logging.info('Saving preprocessed data to csv...')
+        
+        df[["id", "name", "img", "comics"]].to_csv(filename, index=False)
+        
+        logging.info('Done.')
+        
 
 if __name__ == '__main__':
     
     private_key = os.environ['API_PRIVATE_KEY']
     public_key = os.environ['API_PUBLIC_KEY']
     
-    # in case of processing the ts
-    # import datetime
-    # datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    
+    # init the extractor
     mv = MarvelExtractor(public_key, private_key)
     
-    #data = fetch_data(api_url, { "apikey" : os.environ['API_PUBLIC_KEY'], "ts":ts ,"hash" : hashed_params, "offset": 20 } ) 
-    #data = mv.fetch_data(api_url, params) 
+    ###
+    # get comics and save to file
+    # data = mv.get_comics(limit=200)
+    # mv.save_to_file(data, "data/comics.json")
     
-    mv.get_comics()
+    ###
+    # get characters
+    data = mv.get_characters(limit=300)
+    # mv.save_to_file(data, "data/characters.json")
+    mv.preprocess_characters(data, "data/new_ch.csv")
     
-    # logging.info('Saving data to file...')
-    
-    # with open("data/characters.json", 'w') as f: 
-    #     json.dump(data, f)
-    
-    # #pd.json_normalize(data).to_csv("data/characters.csv", sep=",", encoding="utf-8", index=False)
-    
-    # logging.info('Reading data file...')
+    # with open('data/characters.json') as f:
+    #     data = json.load(f)
+        
+    #     mv.preprocess_characters(data)
 
-    # df = pd.read_json("data/characters.json")
+    #df = pd.read_json("data/characters.json")
     
     # print("Unique IDs:" , df["id"].nunique())
     # print("Beasts: ", df[df['name'] == "Beast"]["id"].nunique() )
     
-    # thumbnail = df.loc[ df['name'] == "Beast", "thumbnail"].values[0]
     
-    # logging.info('Preprocessing...')
-    
-    # df["img"] = df.apply(lambda x : x['thumbnail']["path"] + "." + x['thumbnail']["extension"], axis=1)
-    
-    # df["comics"] = df.apply(lambda x : x['comics']["available"], axis=1) 
-    
-    # logging.info('Saving preprocessed file...')
-    
-    # df[["id", "name", "img", "comics"]].to_csv("data/characters.csv", index=False)
         
     #available_comics = beast["comics"]
     

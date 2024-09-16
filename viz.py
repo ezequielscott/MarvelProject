@@ -3,11 +3,11 @@ import pandas as pd
 
 df = pd.read_csv('data/characters.csv')
 
-#[![alt text](image link)](web link)
-
-#df["thumbnail"] = df.apply( lambda x : '[![alt text](' + x['img'] + ')](' + x['img'] + ')', axis=1)
-
+# Thumbnail following markdown format: [![alt text](image link)](web link)
 df["thumbnail"] = df.apply( lambda x : '[<img src="' + x['img'] + '" width="100" />](' + x['img'] + ')', axis=1)
+
+# sort descending
+df = df.sort_values("comics", ascending=False)
 
 app = Dash(__name__)
 
@@ -18,7 +18,7 @@ app.layout =  html.Div(
             columns=[
                 {"id": "id", "name": "ID"},
                 {"id": "name", "name": "Name"},
-                {"id": "thumbnail", "name": "Image", "presentation": "markdown"},
+                #{"id": "thumbnail", "name": "Image", "presentation": "markdown"},
                 {"id": "comics", "name": "Comics"},
             ],
             markdown_options={"html": True},            
