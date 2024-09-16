@@ -51,3 +51,19 @@ To visualize the dashboard, you must first download the data as described in the
 ```
 python dashboard.py
 ```
+
+## Additional methods
+    
+Get the number of comics in which a given character appears in. For example, for character id 1009146:
+```    
+data = mv.get_character_comics(1009146)
+df = pd.DataFrame(data=data)
+print(df["id"].nunique())
+```
+
+Get 2000 comic details and save them to a json file
+
+```
+data = mv.get_comics(limit=2000)
+mv.save_to_file(data, "data/comics_sample.json")
+```

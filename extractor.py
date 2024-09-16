@@ -1,42 +1,3 @@
-# Retrieving data from RESTful APIs that return results in batches can be optimized using several best practices. Here are some key strategies to consider:
-
-# 1. Understand the API Documentation
-
-# Pagination: Familiarize yourself with how the API handles pagination (e.g., page, limit, offset, etc.). This information is usually provided in the API documentation.
-# Rate Limits: Be aware of any rate limits imposed by the API to avoid being throttled or blocked.
-# 2. Use Efficient Pagination Techniques
-
-# Cursor-Based Pagination: If available, use cursor-based pagination instead of offset-based pagination. It’s generally more efficient and provides better performance for large datasets.
-# Incremental Fetching: Fetch data in increments rather than retrieving all at once. This reduces memory usage and allows for quicker responses.
-# 3. Implement Exponential Backoff for Retries
-
-# If you encounter errors (e.g., rate limiting or server errors), use an exponential backoff strategy for retries. This means waiting progressively longer between each retry attempt.
-# 4. Batch Processing
-
-# Process Data in Chunks: Instead of waiting for all data to be retrieved, process each batch as it arrives. This can improve responsiveness and reduce memory usage.
-# Asynchronous Requests: If the API supports it, consider making asynchronous requests to retrieve multiple batches concurrently.
-# 5. Data Caching
-
-# Implement caching mechanisms to store previously fetched results. This can reduce the number of requests made to the API and improve performance.
-# 6. Use Filters and Fields
-
-# If the API allows filtering or selecting specific fields, use these features to reduce the amount of data transferred and processed. This can lead to faster responses and lower resource usage.
-# 7. Monitor and Log Requests
-
-# Maintain logs of API requests, responses, and errors. This can help you identify patterns, troubleshoot issues, and optimize your data retrieval strategy.
-# 8. Error Handling
-
-# Implement robust error handling to manage different types of responses (e.g., success, client errors, server errors). Ensure your application can gracefully handle unexpected situations.
-# 9. Timeouts and Cancellation
-
-# Set reasonable timeouts for requests to prevent the application from hanging indefinitely. Implement cancellation mechanisms for long-running requests.
-# 10. Throttling Requests
-
-# If the API has strict rate limits, implement throttling in your application to prevent exceeding those limits. This can involve pausing requests when nearing the limit.
-# Example Code Snippet
-
-# Here’s a simple example in Python using the requests library to fetch data from a paginated API:
-
 import os
 import requests 
 import time 
@@ -262,22 +223,7 @@ if __name__ == '__main__':
     mv.save_to_file(data, "data/characters.json")
     mv.preprocess_characters(data_input=data, output_filename="data/characters.csv")
     
-    # with open('data/characters.json') as f:
-    #     data = json.load(f)
-    #     mv.preprocess_characters(data)
-    
-    ###
-    ### get the number of comics in which a character appears in
-    ###
-    # data = mv.get_character_comics(1009146)
-    # df = pd.DataFrame(data=data)
-    # print(df["id"].nunique())
 
-    ###
-    ### get comics and save them to a file
-    ###
-    # data = mv.get_comics(limit=2000)
-    # mv.save_to_file(data, "data/comics_sample.json")
     
     
     
