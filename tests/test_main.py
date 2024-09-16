@@ -20,8 +20,6 @@ class TestMv(unittest.TestCase):
         
         self.assertEqual(df["id"].nunique(), limit)
         
-        # print("Beasts: ", df[df['name'] == "Beast"]["id"].nunique() )  
-        
     def test_nodup(self):
         
         limit = 300
@@ -29,6 +27,22 @@ class TestMv(unittest.TestCase):
         df = pd.DataFrame(data=data)    
         
         self.assertFalse(df.groupby("name")["id"].nunique().any() > 1)    
+     
+     
+    def test_transform(self):
+        
+        limit = 300
+        data = self.mv.get_characters(limit=limit)
+        df = pd.DataFrame(data=data)  
+        
+        self.assertEqual(df["id"].nunique(), limit)
+        
+        self.mv.preprocess_characters(output_filename='data/test.csv', data_input=data)
+        
+        df2 = pd.read_csv('data/test.csv')
+        
+        self.assertEqual(df2["id"].nunique(), limit)
+         
         
     def test_num_comics(self):
         
