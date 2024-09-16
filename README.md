@@ -3,6 +3,12 @@ A solution to extract data of Marvel characters from its official public source.
 
 ## Solution
 
+This is a simple solution developed fully in Python.
+
+The following diagram shows the main components used to build a pipeline that extracts data from Marvel sources and display them in a simple dashboard.
+
+![image](docs/MarvelProject.drawio.png)
+
 ## How to install
 
 1. Create and activate a virtual environment
