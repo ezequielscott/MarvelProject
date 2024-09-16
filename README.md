@@ -52,6 +52,8 @@ To visualize the dashboard, you must first download the data as described in the
 python dashboard.py
 ```
 
+The dashboard will be avaible in your browser at http://127.0.0.1:8050/
+
 ## Additional methods
     
 Get the number of comics in which a given character appears in. For example, for character id 1009146:
